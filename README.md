@@ -78,7 +78,7 @@ Enterprise-grade SIEM/SOAR middleware designed to ingest high-volume security te
 ## 3. Project Structure
 
 ```
-D:/SIEM/
+SIEM/
 ├── backend/                        # Golang Service
 │   ├── cmd/server/main.go          # Application entry point
 │   ├── config/config.yaml          # Scoring rules, weights & API configuration
