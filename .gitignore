@@ -1,0 +1,28 @@
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Go binaries & build artifacts
+backend/server.exe
+backend/*.exe
+backend/*.dll
+backend/*.so
+backend/*.dylib
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+*.log

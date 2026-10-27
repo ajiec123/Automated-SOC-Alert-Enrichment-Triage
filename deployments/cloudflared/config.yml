@@ -1,0 +1,22 @@
+# Cloudflare Tunnel Configuration for Zero-Trust Ingress
+# Ingress rules route traffic directly to local backend and dashboard services
+tunnel: 9a8b7c6d-5e4f-3a2b-1c0d-fe9876543210
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # Ingestion Webhook Endpoint (SOAR Core API)
+  - hostname: soar-ingest.company-soc.internal
+    service: http://backend:8080
+    originRequest:
+      connectTimeout: 5s
+      noTLSVerify: false
+
+  # Next.js Operations Dashboard
+  - hostname: soc-dashboard.company-soc.internal
+    service: http://frontend:3000
+    originRequest:
+      connectTimeout: 5s
+      noTLSVerify: false
+
+  # Fallback rule (Catch-all)
+  - service: http_status:404
