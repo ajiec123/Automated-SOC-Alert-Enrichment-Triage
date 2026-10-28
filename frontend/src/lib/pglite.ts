@@ -336,6 +336,26 @@ export async function fetchDashboardMetrics(): Promise<DashboardMetrics> {
   };
 }
 
+export async function fetchTriageAuditLogs(): Promise<TriageAuditLog[]> {
+  const db = await getPGlite();
+  try {
+    const res = await db.query<any>(
+      'SELECT * FROM triage_actions ORDER BY performed_at DESC LIMIT 50;'
+    );
+    return res.rows.map((r) => ({
+      id: r.id,
+      alert_uuid: r.alert_uuid,
+      actor: r.actor,
+      action_taken: r.action_taken,
+      notes: r.notes,
+      hypothesis_selected: r.hypothesis_selected,
+      performed_at: r.performed_at,
+    }));
+  } catch (_) {
+    return [];
+  }
+}
+
 export async function executeSQLConsole(sql: string): Promise<{ rows: any[]; fields: string[]; durationMs: number }> {
   const db = await getPGlite();
   const start = performance.now();

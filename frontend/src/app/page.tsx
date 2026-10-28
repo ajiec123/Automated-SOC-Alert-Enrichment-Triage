@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { AlertRecord, AlertStatus, DashboardMetrics, IncidentGroup } from '@/types/alert';
-import { fetchAlertsFromPGlite, fetchDashboardMetrics } from '@/lib/pglite';
+import { AlertRecord, AlertStatus, DashboardMetrics, IncidentGroup, TriageAuditLog } from '@/types/alert';
+import { fetchAlertsFromPGlite, fetchDashboardMetrics, fetchTriageAuditLogs } from '@/lib/pglite';
 import { useAlertWebSocket } from '@/lib/websocket';
 import { AlertCard } from '@/components/AlertCard';
 import { ThreatChart } from '@/components/ThreatChart';
 import { SqlConsole } from '@/components/SqlConsole';
 import { SimulationModal } from '@/components/SimulationModal';
+import { ReportModal } from '@/components/ReportModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { MitreHeatmap } from '@/components/MitreHeatmap';
 import { IncidentStoryline } from '@/components/IncidentStoryline';
@@ -28,6 +29,7 @@ import {
   Flame,
   LayoutGrid,
   Crosshair,
+  FileText,
 } from 'lucide-react';
 
 export default function SOCDashboard() {
@@ -42,8 +44,10 @@ export default function SOCDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'INCIDENTS' | 'ALERTS' | 'MITRE'>('INCIDENTS');
+  const [auditLogs, setAuditLogs] = useState<TriageAuditLog[]>([]);
   const [isSqlConsoleOpen, setIsSqlConsoleOpen] = useState(false);
   const [isSimModalOpen, setIsSimModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
@@ -56,8 +60,10 @@ export default function SOCDashboard() {
     try {
       const data = await fetchAlertsFromPGlite(statusFilter);
       const m = await fetchDashboardMetrics();
+      const logs = await fetchTriageAuditLogs();
       setAlerts(data);
       setMetrics(m);
+      setAuditLogs(logs);
       setInitError(null);
     } catch (err: any) {
       console.error('Error querying PGlite database:', err);
@@ -206,6 +212,16 @@ export default function SOCDashboard() {
           >
             <Database className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
             SQL Console
+          </button>
+
+          {/* Export Executive Incident Report */}
+          <button
+            onClick={() => setIsReportModalOpen(true)}
+            className="flex items-center gap-1.5 bg-white hover:bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white dark:border-zinc-700 border px-3 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm"
+            title="Generate Executive Incident & Shift Handover Report"
+          >
+            <FileText className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+            Handover Report
           </button>
 
           {/* Simulation Trigger Button */}
@@ -452,6 +468,14 @@ export default function SOCDashboard() {
         isOpen={isSimModalOpen}
         onClose={() => setIsSimModalOpen(false)}
         onAlertGenerated={loadData}
+      />
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        alerts={alerts}
+        incidents={incidents}
+        metrics={metrics}
+        auditLogs={auditLogs}
       />
     </main>
   );
