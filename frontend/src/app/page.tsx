@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { AlertRecord, AlertStatus, DashboardMetrics } from '@/types/alert';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { AlertRecord, AlertStatus, DashboardMetrics, IncidentGroup } from '@/types/alert';
 import { fetchAlertsFromPGlite, fetchDashboardMetrics } from '@/lib/pglite';
 import { useAlertWebSocket } from '@/lib/websocket';
 import { AlertCard } from '@/components/AlertCard';
@@ -9,6 +9,9 @@ import { ThreatChart } from '@/components/ThreatChart';
 import { SqlConsole } from '@/components/SqlConsole';
 import { SimulationModal } from '@/components/SimulationModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { MitreHeatmap } from '@/components/MitreHeatmap';
+import { IncidentStoryline } from '@/components/IncidentStoryline';
+import { correlateAlertsIntoIncidents } from '@/lib/mitre';
 import {
   ShieldAlert,
   Database,
@@ -22,6 +25,9 @@ import {
   Server,
   Layers,
   AlertOctagon,
+  Flame,
+  LayoutGrid,
+  Crosshair,
 } from 'lucide-react';
 
 export default function SOCDashboard() {
@@ -35,6 +41,7 @@ export default function SOCDashboard() {
   });
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'INCIDENTS' | 'ALERTS' | 'MITRE'>('INCIDENTS');
   const [isSqlConsoleOpen, setIsSqlConsoleOpen] = useState(false);
   const [isSimModalOpen, setIsSimModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -86,19 +93,10 @@ export default function SOCDashboard() {
     return () => clearTimeout(timer);
   }, [loadData]);
 
-  if (!mounted) {
-    return (
-      <div className="flex flex-col h-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 font-mono text-sm p-4">
-        <div className="flex items-center gap-3">
-          <Database className="w-5 h-5 text-blue-500 animate-spin" />
-          <span>Initializing Browser-WASM PGlite PostgreSQL Engine...</span>
-        </div>
-        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 text-center max-w-sm">
-          Preparing client-side WebAssembly PostgreSQL engine & IndexedDB storage.
-        </p>
-      </div>
-    );
-  }
+  // Correlate alerts into multi-stage attack campaigns / incidents
+  const incidents: IncidentGroup[] = useMemo(() => {
+    return correlateAlertsIntoIncidents(alerts);
+  }, [alerts]);
 
   // Filter alerts by search query
   const filteredAlerts = alerts.filter((a) => {
@@ -114,6 +112,35 @@ export default function SOCDashboard() {
     );
     return matchesEvent || matchesSource || matchesUUID || matchesIOC;
   });
+
+  // Filter incidents by search query
+  const filteredIncidents = incidents.filter((inc) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const matchesTitle = inc.title.toLowerCase().includes(q);
+    const matchesEntity = inc.keyEntity.toLowerCase().includes(q);
+    const matchesTactic = inc.mitreTactics.some((t) => t.toLowerCase().includes(q));
+    const matchesAlerts = inc.alerts.some(
+      (a) =>
+        a.event_type.toLowerCase().includes(q) ||
+        a.alert_uuid.toLowerCase().includes(q)
+    );
+    return matchesTitle || matchesEntity || matchesTactic || matchesAlerts;
+  });
+
+  if (!mounted) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 font-mono text-sm p-4">
+        <div className="flex items-center gap-3">
+          <Database className="w-5 h-5 text-blue-500 animate-spin" />
+          <span>Initializing Browser-WASM PGlite PostgreSQL Engine...</span>
+        </div>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 text-center max-w-sm">
+          Preparing client-side WebAssembly PostgreSQL engine &amp; IndexedDB storage.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto transition-colors duration-200">
@@ -132,7 +159,7 @@ export default function SOCDashboard() {
                 </span>
               </h1>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Go High-Throughput Ingestion &bull; Concurrent CTI Fan-Out &bull; Browser-Native PGlite PostgreSQL Engine
+                MITRE ATT&amp;CK Correlation &bull; Multi-Stage Attack Storylines &bull; Browser-Native PGlite PostgreSQL Engine
               </p>
             </div>
           </div>
@@ -156,7 +183,9 @@ export default function SOCDashboard() {
               Go Core WS:{' '}
               <strong
                 className={
-                  socketStatus === 'connected' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'
+                  socketStatus === 'connected'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-zinc-500 dark:text-zinc-400'
                 }
               >
                 {socketStatus.toUpperCase()}
@@ -220,13 +249,13 @@ export default function SOCDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 my-6">
         <div className="bg-white dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
           <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400 text-xs mb-1">
-            <span>Total Ingested</span>
-            <Layers className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+            <span>Correlated Incidents</span>
+            <Flame className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-black text-zinc-900 dark:text-white font-mono">
-            {metrics.totalAlerts}
+            {incidents.length}
           </div>
-          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Stored in PGlite WASM</div>
+          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Multi-Stage Campaigns</div>
         </div>
 
         <div className="bg-white dark:bg-zinc-900/80 border border-red-200 dark:border-red-900/40 rounded-xl p-4 shadow-sm">
@@ -271,12 +300,48 @@ export default function SOCDashboard() {
             {metrics.avgScore}
             <span className="text-xs text-zinc-400 dark:text-zinc-500 font-normal"> / 100</span>
           </div>
-          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Multi-CTI Weighted</div>
+          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Total Raw: {metrics.totalAlerts}</div>
         </div>
       </div>
 
       {/* Analytics Charts */}
       <ThreatChart alerts={alerts} />
+
+      {/* MITRE ATT&CK Enterprise Kill-Chain Heatmap */}
+      <MitreHeatmap alerts={alerts} />
+
+      {/* Navigation View Mode Tabs (Attack Storylines vs Raw Stream) */}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xs">
+          <button
+            onClick={() => setActiveTab('INCIDENTS')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+              activeTab === 'INCIDENTS'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+            }`}
+          >
+            <Flame className="w-3.5 h-3.5" />
+            Attack Storylines &amp; Incidents ({incidents.length})
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ALERTS')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+              activeTab === 'ALERTS'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            Raw Alert Feed ({alerts.length})
+          </button>
+        </div>
+
+        <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono hidden sm:inline">
+          Correlated by IP &bull; Asset &bull; MITRE ATT&amp;CK TTPs
+        </span>
+      </div>
 
       {/* Search & Filter Controls */}
       <div className="bg-white dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-sm">
@@ -287,7 +352,7 @@ export default function SOCDashboard() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter by IP, hash, event description, source, or alert UUID..."
+            placeholder="Search by IP, hash, MITRE tactic, event description, or UUID..."
             className="w-full bg-slate-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-9 pr-4 py-1.5 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition"
           />
         </div>
@@ -313,38 +378,70 @@ export default function SOCDashboard() {
         </div>
       </div>
 
-      {/* Alert Feed List */}
-      <div>
-        <div className="flex items-center justify-between mb-3 px-1">
-          <h2 className="text-sm uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-400 flex items-center gap-2">
-            <Radio className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-            Live Enriched Security Alert Stream ({filteredAlerts.length})
-          </h2>
-          <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
-            Client-Side PostgreSQL WASM Engine
-          </span>
-        </div>
-
-        {filteredAlerts.length === 0 ? (
-          <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-12 text-center bg-white dark:bg-zinc-900/30 shadow-sm">
-            <ShieldAlert className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-              No matching alerts found
-            </h3>
-            <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
-              Send an alert via HTTP webhook to <code>/api/v1/alerts/ingest</code> or click the &quot;Simulate Attack&quot; button above.
-            </p>
+      {/* Main Content: Attack Storylines OR Raw Alert Feed */}
+      {activeTab === 'INCIDENTS' ? (
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h2 className="text-sm uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-400 flex items-center gap-2">
+              <Flame className="w-4 h-4 text-amber-500" />
+              Correlated Multi-Stage Incidents ({filteredIncidents.length})
+            </h2>
+            <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
+              Grouped by Attacker Infrastructure &bull; MITRE Kill-Chain
+            </span>
           </div>
-        ) : (
-          filteredAlerts.map((alert) => (
-            <AlertCard
-              key={alert.alert_uuid}
-              alert={alert}
+
+          {filteredIncidents.length === 0 ? (
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-12 text-center bg-white dark:bg-zinc-900/30 shadow-sm">
+              <ShieldAlert className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+              <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                No incidents match current filter
+              </h3>
+              <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
+                Trigger an attack simulation above or reset your search query.
+              </p>
+            </div>
+          ) : (
+            <IncidentStoryline
+              incidents={filteredIncidents}
               onActionComplete={loadData}
             />
-          ))
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        /* Raw Alert Feed List */
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h2 className="text-sm uppercase font-bold tracking-wider text-zinc-700 dark:text-zinc-400 flex items-center gap-2">
+              <Radio className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+              Live Enriched Security Alert Stream ({filteredAlerts.length})
+            </h2>
+            <span className="text-xs text-zinc-400 dark:text-zinc-500 font-mono">
+              Client-Side PostgreSQL WASM Engine
+            </span>
+          </div>
+
+          {filteredAlerts.length === 0 ? (
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl p-12 text-center bg-white dark:bg-zinc-900/30 shadow-sm">
+              <ShieldAlert className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+              <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                No matching alerts found
+              </h3>
+              <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
+                Send an alert via HTTP webhook to <code>/api/v1/alerts/ingest</code> or click the &quot;Simulate Attack&quot; button above.
+              </p>
+            </div>
+          ) : (
+            filteredAlerts.map((alert) => (
+              <AlertCard
+                key={alert.alert_uuid}
+                alert={alert}
+                onActionComplete={loadData}
+              />
+            ))
+          )}
+        </div>
+      )}
 
       {/* Modals */}
       <SqlConsole

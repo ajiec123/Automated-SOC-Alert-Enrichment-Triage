@@ -18,6 +18,13 @@ export interface CTIResult {
   error?: string;
 }
 
+export interface MitreAttack {
+  tactic: string; // e.g. "Command and Control", "Impact", "Initial Access", "Credential Access", "Reconnaissance"
+  techniqueId: string; // e.g. "T1071", "T1486", "T1110", "T1190", "T1046"
+  techniqueName: string; // e.g. "Application Layer Protocol", "Data Encrypted for Impact"
+  subtechnique?: string;
+}
+
 export interface HypothesisItem {
   id: string;
   title: string;
@@ -49,14 +56,32 @@ export interface AlertRecord {
   calculated_score: number;
   severity_tier: SeverityTier;
   status: AlertStatus;
+  asset_id?: string;
   auto_action_taken?: string;
   created_at: string;
   updated_at: string;
   iocs?: IOCItem[];
   enrichments?: CTIResult[];
+  mitre?: MitreAttack;
   root_cause?: RootCauseAnalysis;
   selected_hypothesis_id?: string;
   remediation_notes?: string;
+}
+
+export interface IncidentGroup {
+  id: string;
+  title: string;
+  keyEntity: string; // e.g. "118.25.6.39" or "dc-01.domain.corp"
+  entityType: 'IP' | 'ASSET' | 'CAMPAIGN';
+  highestScore: number;
+  highestTier: SeverityTier;
+  status: AlertStatus;
+  alerts: AlertRecord[];
+  mitreTactics: string[];
+  mitreTechniques: string[];
+  startTime: string;
+  lastSeenTime: string;
+  hypothesisSummary?: string;
 }
 
 export interface TriageAuditLog {
@@ -75,4 +100,5 @@ export interface DashboardMetrics {
   highCount: number;
   containedCount: number;
   avgScore: number;
+  incidentCount?: number;
 }

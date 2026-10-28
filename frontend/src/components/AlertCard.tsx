@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { AlertRecord, AlertStatus, HypothesisItem } from '@/types/alert';
 import { recordTriageInPGlite } from '@/lib/pglite';
 import { generateRootCauseAnalysis } from '@/lib/hypothesis';
+import { getMitreAttackForAlert } from '@/lib/mitre';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -46,6 +47,7 @@ export const AlertCard: React.FC<AlertCardProps> = ({ alert, onActionComplete })
   }, [alert]);
 
   // Set default selected hypothesis if not selected yet
+  const mitre = useMemo(() => getMitreAttackForAlert(alert), [alert]);
   const effectiveSelectedHypothesis = useMemo(() => {
     if (selectedHypothesisId) return selectedHypothesisId;
     // Default to the first 'still_open' hypothesis, or first item
@@ -171,10 +173,16 @@ export const AlertCard: React.FC<AlertCardProps> = ({ alert, onActionComplete })
             <h3 className="text-base font-semibold text-zinc-900 dark:text-white mt-1">
               {alert.event_type}
             </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Telemetry Source:{' '}
-              <span className="text-zinc-700 dark:text-zinc-200 font-medium">{alert.source}</span>
-            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-900/60 font-semibold flex items-center gap-1">
+                <Crosshair className="w-3 h-3 text-red-500" />
+                MITRE {mitre.techniqueId} &bull; {mitre.tactic}
+              </span>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Telemetry Source:{' '}
+                <span className="text-zinc-700 dark:text-zinc-200 font-medium">{alert.source}</span>
+              </p>
+            </div>
           </div>
         </div>
 
