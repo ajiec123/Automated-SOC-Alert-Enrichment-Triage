@@ -26,7 +26,7 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
       desc: 'High-frequency HTTP beaconing to known malicious IP (118.25.6.39) targeting Domain Controller dc-01.',
       severity: 'CRITICAL',
       icon: ShieldAlert,
-      color: 'border-red-500/50 hover:bg-red-950/20 text-red-400',
+      color: 'border-red-300 dark:border-red-500/50 bg-red-50/50 hover:bg-red-50 dark:bg-zinc-900/50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400',
     },
     {
       id: 'ransomware',
@@ -34,7 +34,7 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
       desc: 'Shadow copy wipe command executed alongside malicious file hash on db-prod.internal server.',
       severity: 'CRITICAL',
       icon: Flame,
-      color: 'border-rose-500/50 hover:bg-rose-950/20 text-rose-400',
+      color: 'border-rose-300 dark:border-rose-500/50 bg-rose-50/50 hover:bg-rose-50 dark:bg-zinc-900/50 dark:hover:bg-rose-950/20 text-rose-600 dark:text-rose-400',
     },
     {
       id: 'log4j',
@@ -42,7 +42,7 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
       desc: 'JNDI injection exploit pattern detected in HTTP header targeting payment-gw service.',
       severity: 'CRITICAL',
       icon: Bug,
-      color: 'border-orange-500/50 hover:bg-orange-950/20 text-orange-400',
+      color: 'border-orange-300 dark:border-orange-500/50 bg-orange-50/50 hover:bg-orange-50 dark:bg-zinc-900/50 dark:hover:bg-orange-950/20 text-orange-600 dark:text-orange-400',
     },
     {
       id: 'bruteforce',
@@ -50,7 +50,7 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
       desc: '300+ failed login attempts within 60s from reputation-flagged IP against dmz-proxy gateway.',
       severity: 'HIGH',
       icon: Radio,
-      color: 'border-amber-500/50 hover:bg-amber-950/20 text-amber-400',
+      color: 'border-amber-300 dark:border-amber-500/50 bg-amber-50/50 hover:bg-amber-50 dark:bg-zinc-900/50 dark:hover:bg-amber-950/20 text-amber-600 dark:text-amber-400',
     },
     {
       id: 'portscan',
@@ -58,7 +58,7 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
       desc: 'Rapid reconnaissance scan across multiple ports on corp-workstation endpoint.',
       severity: 'LOW',
       icon: Zap,
-      color: 'border-emerald-500/50 hover:bg-emerald-950/20 text-emerald-400',
+      color: 'border-emerald-300 dark:border-emerald-500/50 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-zinc-900/50 dark:hover:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400',
     },
   ];
 
@@ -99,31 +99,31 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
-        <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
+        <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/60">
           <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-amber-400" />
-            <h3 className="text-base font-bold text-white">
+            <Zap className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+            <h3 className="text-base font-bold text-zinc-900 dark:text-white">
               SOC Threat Telemetry Simulator
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="text-zinc-400 hover:text-white px-2.5 py-1 rounded-lg bg-zinc-800/80 hover:bg-zinc-800 text-xs transition"
+            className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white px-2.5 py-1 rounded-lg bg-zinc-200/60 hover:bg-zinc-200 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 text-xs transition"
           >
             ✕ Close
           </button>
         </div>
 
         <div className="p-6 space-y-3">
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
             Inject realistic SIEM alerts into the Golang High-Throughput Core. Each alert is enriched concurrently across VirusTotal, AbuseIPDB, and Shodan before streaming live to this dashboard.
           </p>
 
           {successMsg && (
-            <div className="p-3 bg-emerald-950/60 border border-emerald-800 rounded-lg text-xs text-emerald-300 flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-400" />
+            <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-300 rounded-lg text-xs flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>{successMsg}</span>
             </div>
           )}
@@ -134,29 +134,29 @@ export const SimulationModal: React.FC<SimulationModalProps> = ({
               return (
                 <div
                   key={sc.id}
-                  className={`border rounded-xl p-3.5 bg-zinc-900/50 flex items-center justify-between gap-4 transition-all ${sc.color}`}
+                  className={`border rounded-xl p-3.5 flex items-center justify-between gap-4 transition-all shadow-sm ${sc.color}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 mt-0.5">
+                    <div className="p-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm mt-0.5">
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-semibold text-white">
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">
                           {sc.title}
                         </h4>
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                           {sc.severity}
                         </span>
                       </div>
-                      <p className="text-xs text-zinc-400 mt-0.5">{sc.desc}</p>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">{sc.desc}</p>
                     </div>
                   </div>
 
                   <button
                     onClick={() => handleSimulate(sc.id)}
                     disabled={loadingScenario !== null}
-                    className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition shrink-0 disabled:opacity-50"
+                    className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition shrink-0 disabled:opacity-50 shadow-sm"
                   >
                     {loadingScenario === sc.id ? 'Ingesting...' : 'Fire Alert'}
                   </button>
