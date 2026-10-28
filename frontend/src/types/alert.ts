@@ -102,3 +102,22 @@ export interface DashboardMetrics {
   avgScore: number;
   incidentCount?: number;
 }
+
+export interface PlaybookStep {
+  id: string;
+  title: string;
+  target: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  output?: string;
+}
+
+export interface PlaybookExecution {
+  id: string;
+  name: string;
+  triggerAction: string;
+  alertUUID: string;
+  steps: PlaybookStep[];
+  startedAt: string;
+  completedAt?: string;
+  status: 'running' | 'success' | 'failed';
+}

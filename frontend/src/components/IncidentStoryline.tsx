@@ -15,17 +15,23 @@ import {
   Crosshair,
   CheckCircle2,
   Activity,
+  Zap,
 } from 'lucide-react';
 import { AlertCard } from './AlertCard';
+import { IncidentGraph } from './IncidentGraph';
 
 interface IncidentStorylineProps {
   incidents: IncidentGroup[];
   onActionComplete?: () => void;
+  onSelectIOC?: (ioc: { ioc_type: 'IP' | 'HASH' | 'DOMAIN'; ioc_value: string }) => void;
+  onTriggerPlaybook?: (action: string, alertUUID: string) => void;
 }
 
 export const IncidentStoryline: React.FC<IncidentStorylineProps> = ({
   incidents,
   onActionComplete,
+  onSelectIOC,
+  onTriggerPlaybook,
 }) => {
   const [expandedIncidentId, setExpandedIncidentId] = useState<string | null>(
     incidents[0]?.id || null
@@ -160,6 +166,9 @@ export const IncidentStoryline: React.FC<IncidentStorylineProps> = ({
             {/* Expanded Multi-Stage Attack Storyline */}
             {isExpanded && (
               <div className="p-5 border-t border-zinc-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-950/30 space-y-4">
+                {/* Visual Lateral Movement Attack Graph */}
+                <IncidentGraph incident={inc} />
+
                 <div className="flex items-center justify-between pb-2">
                   <h4 className="text-xs uppercase font-extrabold tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
                     <Activity className="w-4 h-4 text-blue-500" />
@@ -179,7 +188,12 @@ export const IncidentStoryline: React.FC<IncidentStorylineProps> = ({
                       </span>
 
                       {/* Render Alert Card */}
-                      <AlertCard alert={alert} onActionComplete={onActionComplete} />
+                      <AlertCard
+                        alert={alert}
+                        onActionComplete={onActionComplete}
+                        onSelectIOC={onSelectIOC}
+                        onTriggerPlaybook={onTriggerPlaybook}
+                      />
                     </div>
                   ))}
                 </div>

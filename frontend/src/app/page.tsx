@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { AlertRecord, AlertStatus, DashboardMetrics, IncidentGroup, TriageAuditLog } from '@/types/alert';
+import { AlertRecord, AlertStatus, DashboardMetrics, IncidentGroup, TriageAuditLog, IOCItem, PlaybookExecution } from '@/types/alert';
 import { fetchAlertsFromPGlite, fetchDashboardMetrics, fetchTriageAuditLogs } from '@/lib/pglite';
 import { useAlertWebSocket } from '@/lib/websocket';
 import { AlertCard } from '@/components/AlertCard';
@@ -9,6 +9,8 @@ import { ThreatChart } from '@/components/ThreatChart';
 import { SqlConsole } from '@/components/SqlConsole';
 import { SimulationModal } from '@/components/SimulationModal';
 import { ReportModal } from '@/components/ReportModal';
+import { IOCDrawer } from '@/components/IOCDrawer';
+import { PlaybookDrawer } from '@/components/PlaybookDrawer';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { MitreHeatmap } from '@/components/MitreHeatmap';
 import { IncidentStoryline } from '@/components/IncidentStoryline';
@@ -45,6 +47,8 @@ export default function SOCDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'INCIDENTS' | 'ALERTS' | 'MITRE'>('INCIDENTS');
   const [auditLogs, setAuditLogs] = useState<TriageAuditLog[]>([]);
+  const [selectedIOC, setSelectedIOC] = useState<IOCItem | null>(null);
+  const [activePlaybook, setActivePlaybook] = useState<PlaybookExecution | null>(null);
   const [isSqlConsoleOpen, setIsSqlConsoleOpen] = useState(false);
   const [isSimModalOpen, setIsSimModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -99,7 +103,83 @@ export default function SOCDashboard() {
     return () => clearTimeout(timer);
   }, [loadData]);
 
-  // Correlate alerts into multi-stage attack campaigns / incidents
+  // Handle launching automated SOAR playbook execution
+  const handleTriggerPlaybook = (action: string, alertUUID: string) => {
+    const isBlock = action === 'block_ip';
+    const playbook: PlaybookExecution = {
+      id: `PB-${Date.now().toString().slice(-6)}`,
+      name: isBlock
+        ? 'Perimeter Ingress/Egress Isolation & Threat Intelligence Ban'
+        : 'Endpoint Forensic Quarantine & Credential Invalidation',
+      triggerAction: action,
+      alertUUID,
+      startedAt: new Date().toISOString(),
+      status: 'running',
+      steps: isBlock
+        ? [
+            {
+              id: 's1',
+              title: 'Query Threat Intelligence APIs (AbuseIPDB, VT, Shodan)',
+              target: 'CTI Orchestrator',
+              status: 'running',
+              output: 'Abuse confidence corroborated > 90%. Malicious rating locked.',
+            },
+            {
+              id: 's2',
+              title: 'Inject Drop Rules into Edge Firewalls (Palo Alto / pfSense)',
+              target: 'Perimeter FW API',
+              status: 'pending',
+              output: 'Rule created: deny ip from target to ANY (drop counters active).',
+            },
+            {
+              id: 's3',
+              title: 'Push IOC into Internal SIEM & DNS Sinkhole Watchlists',
+              target: 'Core DNS Engine',
+              status: 'pending',
+              output: 'DNS sinkholed to 127.0.0.1; further outbound queries dropped.',
+            },
+            {
+              id: 's4',
+              title: 'Broadcast Incident Briefing to On-Call Telegram / SecOps',
+              target: 'Telegram Webhook',
+              status: 'pending',
+              output: 'Dispatched alert brief with selected hypothesis to Incident Response.',
+            },
+          ]
+        : [
+            {
+              id: 's1',
+              title: 'Command Host Network Adapter Severance via EDR Agent',
+              target: 'CrowdStrike / Wazuh',
+              status: 'running',
+              output: 'Host network isolated; management tunnel retained for triage.',
+            },
+            {
+              id: 's2',
+              title: 'Terminate Rogue Processes & Subprocesses by Tree PID',
+              target: 'Endpoint Engine',
+              status: 'pending',
+              output: 'Terminated suspicious child processes and associated memory injectors.',
+            },
+            {
+              id: 's3',
+              title: 'Trigger Storage Immutability & Volatile RAM Snapshot',
+              target: 'Forensics Agent',
+              status: 'pending',
+              output: 'Memory dump stored at /var/forensics/dumps for Volatility analysis.',
+            },
+            {
+              id: 's4',
+              title: 'Revoke Active Kerberos TGT and Force Password Reset',
+              target: 'Active Directory / Okta',
+              status: 'pending',
+              output: 'Revoked active user sessions; MFA re-authentication enforced.',
+            },
+          ],
+    };
+
+    setActivePlaybook(playbook);
+  };
   const incidents: IncidentGroup[] = useMemo(() => {
     return correlateAlertsIntoIncidents(alerts);
   }, [alerts]);
@@ -421,6 +501,8 @@ export default function SOCDashboard() {
             <IncidentStoryline
               incidents={filteredIncidents}
               onActionComplete={loadData}
+              onSelectIOC={(ioc) => setSelectedIOC(ioc)}
+              onTriggerPlaybook={handleTriggerPlaybook}
             />
           )}
         </div>
@@ -453,6 +535,8 @@ export default function SOCDashboard() {
                 key={alert.alert_uuid}
                 alert={alert}
                 onActionComplete={loadData}
+                onSelectIOC={(ioc) => setSelectedIOC(ioc)}
+                onTriggerPlaybook={handleTriggerPlaybook}
               />
             ))
           )}
@@ -476,6 +560,15 @@ export default function SOCDashboard() {
         incidents={incidents}
         metrics={metrics}
         auditLogs={auditLogs}
+      />
+      <IOCDrawer
+        ioc={selectedIOC}
+        onClose={() => setSelectedIOC(null)}
+        allAlerts={alerts}
+      />
+      <PlaybookDrawer
+        execution={activePlaybook}
+        onClose={() => setActivePlaybook(null)}
       />
     </main>
   );

@@ -32,9 +32,16 @@ import {
 interface AlertCardProps {
   alert: AlertRecord;
   onActionComplete?: () => void;
+  onSelectIOC?: (ioc: { ioc_type: 'IP' | 'HASH' | 'DOMAIN'; ioc_value: string }) => void;
+  onTriggerPlaybook?: (action: string, alertUUID: string) => void;
 }
 
-export const AlertCard: React.FC<AlertCardProps> = ({ alert, onActionComplete }) => {
+export const AlertCard: React.FC<AlertCardProps> = ({
+  alert,
+  onActionComplete,
+  onSelectIOC,
+  onTriggerPlaybook,
+}) => {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [isRCAOpen, setIsRCAOpen] = useState<boolean>(true); // default open or expanded
   const [selectedHypothesisId, setSelectedHypothesisId] = useState<string>('');
@@ -126,6 +133,10 @@ export const AlertCard: React.FC<AlertCardProps> = ({ alert, onActionComplete })
         finalNotes,
         effectiveSelectedHypothesis
       );
+
+      if (onTriggerPlaybook && (action === 'block_ip' || action === 'isolate_host')) {
+        onTriggerPlaybook(action, alert.alert_uuid);
+      }
 
       if (onActionComplete) onActionComplete();
     } catch (err) {
@@ -221,20 +232,25 @@ export const AlertCard: React.FC<AlertCardProps> = ({ alert, onActionComplete })
             Indicators (IOCs):
           </span>
           {alert.iocs.map((ioc, idx) => (
-            <div
+            <button
               key={idx}
-              className="flex items-center gap-1.5 bg-white dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-700/80 px-2.5 py-1 rounded text-xs font-mono text-zinc-800 dark:text-zinc-200 shadow-sm"
+              type="button"
+              onClick={() => onSelectIOC && onSelectIOC(ioc)}
+              title="Click to investigate IOC details, WHOIS, and firewall block rules"
+              className="flex items-center gap-1.5 bg-white hover:bg-blue-50 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 border border-zinc-200 hover:border-blue-400 dark:border-zinc-700/80 dark:hover:border-blue-500 px-2.5 py-1 rounded text-xs font-mono text-zinc-800 dark:text-zinc-200 shadow-sm transition group cursor-pointer"
             >
               {ioc.ioc_type === 'IP' ? (
-                <Globe className="w-3 h-3 text-blue-500 dark:text-blue-400" />
+                <Globe className="w-3 h-3 text-blue-500 group-hover:scale-110 transition" />
               ) : (
-                <Hash className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+                <Hash className="w-3 h-3 text-amber-500 group-hover:scale-110 transition" />
               )}
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase">
                 {ioc.ioc_type}:
               </span>
-              <span>{ioc.ioc_value}</span>
-            </div>
+              <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 font-semibold underline decoration-dotted">
+                {ioc.ioc_value}
+              </span>
+            </button>
           ))}
         </div>
       )}
