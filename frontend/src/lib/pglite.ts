@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS triage_actions (
     actor VARCHAR(128) NOT NULL,
     action_taken VARCHAR(64) NOT NULL,
     notes TEXT,
+    hypothesis_selected VARCHAR(128),
     performed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -236,7 +237,8 @@ export async function recordTriageInPGlite(
   actor: string,
   action: string,
   newStatus: string,
-  notes?: string
+  notes?: string,
+  hypothesisSelected?: string
 ): Promise<void> {
   const db = await getPGlite();
 
@@ -245,9 +247,14 @@ export async function recordTriageInPGlite(
     [newStatus, alertUUID]
   );
 
+  // Alter table if column missing (safe migration for local IndexedDB)
+  try {
+    await db.query('ALTER TABLE triage_actions ADD COLUMN IF NOT EXISTS hypothesis_selected VARCHAR(128);');
+  } catch (_) {}
+
   await db.query(
-    'INSERT INTO triage_actions (alert_uuid, actor, action_taken, notes) VALUES ($1, $2, $3, $4);',
-    [alertUUID, actor, action, notes || '']
+    'INSERT INTO triage_actions (alert_uuid, actor, action_taken, notes, hypothesis_selected) VALUES ($1, $2, $3, $4, $5);',
+    [alertUUID, actor, action, notes || '', hypothesisSelected || null]
   );
 }
 

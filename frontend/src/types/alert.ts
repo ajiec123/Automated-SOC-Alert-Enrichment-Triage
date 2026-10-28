@@ -18,6 +18,28 @@ export interface CTIResult {
   error?: string;
 }
 
+export interface HypothesisItem {
+  id: string;
+  title: string;
+  status: 'confirmed' | 'not_confirmed' | 'still_open' | 'refuted';
+  description: string;
+  evidenceSupport?: string;
+  evidenceContradict?: string;
+}
+
+export interface RootCauseAnalysis {
+  confirmedCause?: string;
+  summary: string;
+  investigator?: string;
+  hypotheses: HypothesisItem[];
+  whatWouldSettleIt?: string;
+  whatToDo: {
+    nextCheck: string;
+    description: string;
+    recommendedAction?: string;
+  };
+}
+
 export interface AlertRecord {
   id?: number;
   alert_uuid: string;
@@ -32,6 +54,9 @@ export interface AlertRecord {
   updated_at: string;
   iocs?: IOCItem[];
   enrichments?: CTIResult[];
+  root_cause?: RootCauseAnalysis;
+  selected_hypothesis_id?: string;
+  remediation_notes?: string;
 }
 
 export interface TriageAuditLog {
@@ -40,6 +65,7 @@ export interface TriageAuditLog {
   actor: string;
   action_taken: string;
   notes?: string;
+  hypothesis_selected?: string;
   performed_at: string;
 }
 

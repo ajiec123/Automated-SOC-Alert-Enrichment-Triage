@@ -227,10 +227,11 @@ func (h *APIHandler) GetAlerts(c *gin.Context) {
 // TriageAction handles POST /api/v1/triage
 func (h *APIHandler) TriageAction(c *gin.Context) {
 	var req struct {
-		AlertUUID   string `json:"alert_uuid" binding:"required"`
-		Action      string `json:"action" binding:"required"` // block_ip, isolate_host, dismiss, resolve
-		Actor       string `json:"actor"`
-		Notes       string `json:"notes"`
+		AlertUUID          string `json:"alert_uuid" binding:"required"`
+		Action             string `json:"action" binding:"required"` // block_ip, isolate_host, dismiss, resolve
+		Actor              string `json:"actor"`
+		Notes              string `json:"notes"`
+		HypothesisSelected string `json:"hypothesis_selected"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -274,23 +275,25 @@ func (h *APIHandler) TriageAction(c *gin.Context) {
 
 	// Broadcast triage event to all dashboard clients
 	_ = h.hub.BroadcastJSON(map[string]interface{}{
-		"event":       "alert_triaged",
-		"alert_uuid":  req.AlertUUID,
-		"action":      req.Action,
-		"description": actionDescription,
-		"status":      newStatus,
-		"actor":       req.Actor,
-		"notes":       req.Notes,
-		"timestamp":   time.Now().UTC().Format(time.RFC3339),
+		"event":               "alert_triaged",
+		"alert_uuid":          req.AlertUUID,
+		"action":              req.Action,
+		"description":         actionDescription,
+		"status":              newStatus,
+		"actor":               req.Actor,
+		"notes":               req.Notes,
+		"hypothesis_selected": req.HypothesisSelected,
+		"timestamp":           time.Now().UTC().Format(time.RFC3339),
 	})
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":      "success",
-		"alert_uuid":  req.AlertUUID,
-		"new_status":  newStatus,
-		"action":      req.Action,
-		"description": actionDescription,
-		"found":       found,
+		"status":              "success",
+		"alert_uuid":          req.AlertUUID,
+		"new_status":          newStatus,
+		"action":              req.Action,
+		"description":         actionDescription,
+		"hypothesis_selected": req.HypothesisSelected,
+		"found":               found,
 	})
 }
 
