@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { AlertRecord, AlertStatus, DashboardMetrics } from '@/types/alert';
 import { fetchAlertsFromPGlite, fetchDashboardMetrics } from '@/lib/pglite';
 import { useAlertWebSocket } from '@/lib/websocket';
@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Server,
   Layers,
+  AlertOctagon,
 } from 'lucide-react';
 
 export default function SOCDashboard() {
@@ -38,6 +39,9 @@ export default function SOCDashboard() {
   const [isSimModalOpen, setIsSimModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
+
+  const isInitialLoad = useRef(true);
 
   // Load alerts and metrics directly from browser-native PGlite WASM
   const loadData = useCallback(async () => {
@@ -47,10 +51,16 @@ export default function SOCDashboard() {
       const m = await fetchDashboardMetrics();
       setAlerts(data);
       setMetrics(m);
-    } catch (err) {
+      setInitError(null);
+    } catch (err: any) {
       console.error('Error querying PGlite database:', err);
+      if (isInitialLoad.current) {
+        setInitError(err?.message || 'Database initialization error');
+      }
     } finally {
       setIsRefreshing(false);
+      isInitialLoad.current = false;
+      setMounted(true);
     }
   }, [statusFilter]);
 
@@ -60,17 +70,32 @@ export default function SOCDashboard() {
   });
 
   useEffect(() => {
-    setMounted(true);
+    // Safety fallback: if initialization takes more than 6 seconds, force unblock the UI
+    const timer = setTimeout(() => {
+      setMounted((prev) => {
+        if (!prev) {
+          console.warn('[SOC Dashboard] Fallback timeout triggered: unblocking splash screen');
+          return true;
+        }
+        return prev;
+      });
+    }, 6000);
+
     loadData();
+
+    return () => clearTimeout(timer);
   }, [loadData]);
 
   if (!mounted) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 font-mono text-sm">
+      <div className="flex flex-col h-screen items-center justify-center bg-slate-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 font-mono text-sm p-4">
         <div className="flex items-center gap-3">
           <Database className="w-5 h-5 text-blue-500 animate-spin" />
-          Initializing Browser-WASM PGlite PostgreSQL Engine...
+          <span>Initializing Browser-WASM PGlite PostgreSQL Engine...</span>
         </div>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2 text-center max-w-sm">
+          Preparing client-side WebAssembly PostgreSQL engine & IndexedDB storage.
+        </p>
       </div>
     );
   }
@@ -174,6 +199,22 @@ export default function SOCDashboard() {
           </button>
         </div>
       </header>
+
+      {/* Initialization Notice (If any error occurred) */}
+      {initError && (
+        <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl flex items-center justify-between text-xs text-amber-800 dark:text-amber-200">
+          <div className="flex items-center gap-2">
+            <AlertOctagon className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>Database warning: {initError}. Retrying in-memory mode.</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="px-2.5 py-1 bg-amber-200 dark:bg-amber-800/60 rounded text-amber-900 dark:text-amber-100 font-medium hover:bg-amber-300 dark:hover:bg-amber-800 transition"
+          >
+            Retry Sync
+          </button>
+        </div>
+      )}
 
       {/* Metric Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 my-6">

@@ -46,6 +46,41 @@ CREATE INDEX IF NOT EXISTS idx_alerts_score ON alerts(calculated_score DESC);
 CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
 `;
 
+// Helper: wrap a promise with a timeout
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMsg: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(errorMsg)), timeoutMs)),
+  ]);
+}
+
+async function createDatabaseInstance(): Promise<PGlite> {
+  // First attempt: try IndexedDB persistence with a 4-second timeout
+  try {
+    const idbDb = new PGlite('idb://soc-alerts-db');
+    await withTimeout(idbDb.waitReady, 4000, 'IndexedDB waitReady timeout');
+    await withTimeout(idbDb.exec(SCHEMA_DDL), 4000, 'IndexedDB schema execution timeout');
+    await seedInitialDataIfEmpty(idbDb);
+    console.log('[PGlite] Successfully initialized with IndexedDB persistence (idb://soc-alerts-db)');
+    return idbDb;
+  } catch (idbErr) {
+    console.warn('[PGlite] IndexedDB unavailable or timed out, falling back to in-memory WASM database:', idbErr);
+  }
+
+  // Second attempt: purely in-memory PGlite WASM
+  try {
+    const memDb = new PGlite();
+    await withTimeout(memDb.waitReady, 5000, 'Memory waitReady timeout');
+    await withTimeout(memDb.exec(SCHEMA_DDL), 4000, 'Memory schema execution timeout');
+    await seedInitialDataIfEmpty(memDb);
+    console.log('[PGlite] Successfully initialized in-memory WASM engine');
+    return memDb;
+  } catch (memErr) {
+    console.error('[PGlite] Memory database initialization also encountered an issue:', memErr);
+    throw memErr;
+  }
+}
+
 export async function getPGlite(): Promise<PGlite> {
   if (typeof window === 'undefined') {
     throw new Error('PGlite WASM runs client-side inside the browser');
@@ -56,25 +91,16 @@ export async function getPGlite(): Promise<PGlite> {
   }
 
   if (!initPromise) {
-    initPromise = (async () => {
-      try {
-        // Try IndexedDB persistence first (idb://soc-alerts-db)
-        const db = new PGlite('idb://soc-alerts-db');
-        await db.waitReady;
-        await db.exec(SCHEMA_DDL);
+    initPromise = createDatabaseInstance()
+      .then((db) => {
         pgliteInstance = db;
-        await seedInitialDataIfEmpty(db);
         return db;
-      } catch (err) {
-        console.warn('IndexedDB unavailable for PGlite, falling back to in-memory WASM engine:', err);
-        const memDb = new PGlite();
-        await memDb.waitReady;
-        await memDb.exec(SCHEMA_DDL);
-        pgliteInstance = memDb;
-        await seedInitialDataIfEmpty(memDb);
-        return memDb;
-      }
-    })();
+      })
+      .catch((err) => {
+        // Reset so subsequent calls can retry
+        initPromise = null;
+        throw err;
+      });
   }
 
   return initPromise;
