@@ -1,6 +1,6 @@
 # Automated SOC Alert Enrichment & Triage Platform (PGlite WASM Edition)
 
-Enterprise-grade SIEM/SOAR middleware designed to ingest high-volume security telemetry, execute asynchronous multi-threat intelligence enrichment, calculate deterministic risk scores, and present actionable alerts to Security Operations Center (SOC) analysts in real time with a browser-native PostgreSQL WebAssembly engine.
+Enterprise-grade SIEM/SOAR middleware and modern operations console designed to ingest high-volume security telemetry, execute asynchronous multi-threat intelligence enrichment, calculate deterministic risk scores, and present actionable alerts to Security Operations Center (SOC) analysts in real time with a browser-native PostgreSQL WebAssembly engine.
 
 ---
 
@@ -51,7 +51,13 @@ Enterprise-grade SIEM/SOAR middleware designed to ingest high-volume security te
 |  |  - Full SQL Execution in Browser  |  |         +-------------------------------+
 |  |  - IndexedDB Persistence (idb://) |  |
 |  +-----------------------------------+  |
-|  |  React Dark Mode SOC Dashboard   |  |
+|  |  React Dark/Light SOC Dashboard   |  |
+|  |  - MITRE ATT&CK Matrix Heatmap    |  |
+|  |  - Attack Storylines & Graph View |  |
+|  |  - Root Cause & Hypothesis Triage |  |
+|  |  - Automated SOAR Playbook Engine |  |
+|  |  - Interactive IOC Flyout Drawer  |  |
+|  |  - One-Click Handover Report (.MD)|  |
 |  +-----------------------------------+  |
 +-----------------------------------------+
 ```
@@ -60,18 +66,38 @@ Enterprise-grade SIEM/SOAR middleware designed to ingest high-volume security te
 
 ## 2. Key Features
 
+### 🚀 Core Engineering & Pipeline
 - **Sub-Second Ingestion**: Golang Gin engine returns `HTTP 202 Accepted` in < 15ms by pushing tasks into bounded internal channels (`chan ProcessingTask`).
-- **Concurrent Goroutine Fan-Out**: Threat intelligence queries to VirusTotal, AbuseIPDB, and Shodan execute simultaneously with a 2500ms context deadline.
+- **Concurrent Goroutine Fan-Out**: Simultaneous queries to VirusTotal, AbuseIPDB, and Shodan with a 2500ms context deadline.
 - **Deterministic Composite Threat Scoring**:
   $$S_{comp} = \min\left(100, \sum (W_i \cdot S_i) \times M_{asset}\right)$$
-  - VirusTotal Weight: `0.40`
-  - AbuseIPDB Weight: `0.35`
-  - Shodan Weight: `0.25`
+  - VirusTotal: `0.40` | AbuseIPDB: `0.35` | Shodan: `0.25`
   - Critical asset multiplier: `1.0 - 1.5`
-- **PGlite (PostgreSQL in WebAssembly)**: Runs a complete PostgreSQL relational database engine natively in the analyst's browser. Persists alerts and triage audits in `idb://soc-alerts-db` (IndexedDB) with zero server-side database dependencies.
-- **Built-in Browser SQL Console**: Analysts can run direct PostgreSQL queries (`SELECT`, `JOIN`, `GROUP BY`) against live telemetry in browser memory with sub-millisecond query latency.
-- **Bi-Directional Telegram Triage**: Alerts scoring $\ge 60$ trigger Telegram alert cards with interactive buttons (`🚫 Block IP`, `🛡️ Isolate Host`, `❌ Ignore Alert`), updating the dashboard in real time.
-- **Attack Simulation Suite**: One-click scenario injector (Cobalt Strike C2, Ransomware VSS Deletion, Log4j RCE, SSH Brute Force, Port Scan).
+- **PGlite (PostgreSQL in WebAssembly)**: Runs a complete relational PostgreSQL engine natively in the analyst's browser. Persists alerts and triage audits in `idb://soc-alerts-db` (IndexedDB) with memory fallback and zero server database requirements.
+- **Bi-Directional Telegram Triage**: Alerts scoring $\ge 60$ dispatch rich interactive cards to Telegram with inline buttons (`🚫 Block IP`, `🛡️ Isolate Host`, `❌ Dismiss`).
+
+### 🛡️ Advanced SOC Analyst Capabilities (Next-Level Updates)
+- **Structured Root Cause & Hypothesis Verdicts**:
+  - Structured **CAUSE**, **OTHER HYPOTHESES, STILL OPEN / CONFIRMED / REFUTED** with supporting and contradicting evidence, **WHAT WOULD SETTLE IT** (verification tests), and **WHAT TO DO** recommendations.
+  - Analysts link their remediation verdicts (`Block IP`, `Isolate Host`, `Mark Triaged`, `Dismiss`) directly to a specific hypothesis target.
+- **MITRE ATT&CK® Enterprise Heatmap**:
+  - Live interactive matrix mapping alerts across all 13 adversary tactics (`Reconnaissance` → `Initial Access` → `Command and Control` → `Impact`).
+- **Correlated Multi-Stage Attack Storylines & Graph View**:
+  - Correlates isolated alerts by attacker IP infrastructure or targeted asset into unified **Incidents (`INC-XXXXXX`)**.
+  - Includes a visual **Lateral Movement Attack Graph** showing sequential adversary pivots (`Stage 1 → PIVOT → Stage 2 → Stage 3`).
+- **Automated SOAR Playbook Execution Engine**:
+  - Real-time animated execution drawer simulating automated containment steps (CrowdStrike EDR network severance, Palo Alto firewall edge injection, DNS sinkholing, RAM dumps, Telegram notifications).
+- **Interactive IOC Threat Hunting Drawer**:
+  - Click any IOC (IP, Hash, Domain) to open a slide-out flyout showing:
+    - Geolocation & ASN telemetry.
+    - Direct deep links to VirusTotal, AbuseIPDB, and Shodan.
+    - One-click copyable firewall syntax (**iptables**, **Cisco ASA**, **Palo Alto**, **PowerShell**).
+    - Historical cross-alert correlation in PGlite WASM.
+- **One-Click Incident & Shift Handover Report Generator**:
+  - Exports executive-ready TLP:AMBER briefs in **Markdown (`.md`)** and printable **PDF document layout** with KPI cards, incident tables, RCA evidence, and immutable audit trails.
+- **PGlite Threat Hunting SQL Bookmarks & CSV Export**:
+  - Built-in bookmarks for hunting attacker subnets, multi-CTI performance stats, and triage logs with instant **Export CSV** capability.
+- **Dark & Light Mode Switching**: Seamless theme toggle with local storage persistence and hydration flash protection.
 
 ---
 
@@ -80,44 +106,55 @@ Enterprise-grade SIEM/SOAR middleware designed to ingest high-volume security te
 ```
 SIEM/
 ├── backend/                        # Golang Service
-│   ├── cmd/server/main.go          # Application entry point
-│   ├── config/config.yaml          # Scoring rules, weights & API configuration
+│   ├── cmd/server/main.go          # Application entry point & router
+│   ├── config/config.yaml          # Scoring rules, weights & asset multipliers
 │   ├── internal/
 │   │   ├── api/
-│   │   │   ├── http/handler.go     # Ingestion & Triage REST endpoints
+│   │   │   ├── http/handler.go     # Ingestion, simulation & triage endpoints
 │   │   │   └── websocket/hub.go    # Real-time WebSocket broadcasting hub
-│   │   ├── cti/                    # Threat Intel Services
+│   │   ├── cti/                    # Threat Intelligence Clients
 │   │   │   ├── types.go            # CTI interfaces & models
 │   │   │   ├── virustotal.go       # VirusTotal v3 client
 │   │   │   ├── abuseipdb.go        # AbuseIPDB v2 client
 │   │   │   └── shodan.go           # Shodan REST client
 │   │   ├── engine/
-│   │   │   ├── types.go            # Pipeline data types
+│   │   │   ├── types.go            # Pipeline models & payloads
 │   │   │   ├── enricher.go         # Goroutine fan-out orchestrator
 │   │   │   ├── scorer.go           # Composite risk calculation engine
-│   │   │   └── scorer_test.go      # Scorer unit tests
+│   │   │   └── scorer_test.go      # Unit tests
 │   │   └── notifier/
 │   │       └── telegram.go         # Telegram bot notifications & callbacks
 │   ├── Dockerfile
 │   ├── go.mod
 │   └── go.sum
 │
-├── frontend/                       # Next.js Operations UI
+├── frontend/                       # Next.js 14 Operations Console
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── page.tsx            # Live SOC Alert Board Dashboard
-│   │   │   ├── layout.tsx          # Root Layout & dark theme
-│   │   │   └── globals.css         # Tailwind & custom scrollbars
+│   │   │   ├── page.tsx            # Live SOC operations console & switcher
+│   │   │   ├── layout.tsx          # Root Layout & theme provider
+│   │   │   └── globals.css         # Tailwind styles & theme variables
 │   │   ├── components/
-│   │   │   ├── AlertCard.tsx       # Alert Card & Remediation Controls
-│   │   │   ├── ThreatChart.tsx     # Recharts analytics visualizations
-│   │   │   ├── SqlConsole.tsx      # Browser-native PGlite SQL Query Console
-│   │   │   └── SimulationModal.tsx # Telemetry attack scenario generator
+│   │   │   ├── AlertCard.tsx       # Root Cause & Hypothesis remediation card
+│   │   │   ├── IncidentStoryline.tsx # Multi-stage correlated campaign timeline
+│   │   │   ├── IncidentGraph.tsx   # Lateral movement attack node graph
+│   │   │   ├── MitreHeatmap.tsx    # MITRE ATT&CK enterprise kill-chain matrix
+│   │   │   ├── IOCDrawer.tsx       # Deep IOC intelligence & firewall generator
+│   │   │   ├── PlaybookDrawer.tsx  # Animated SOAR playbook containment runner
+│   │   │   ├── ReportModal.tsx     # One-click shift handover report generator
+│   │   │   ├── SqlConsole.tsx      # PGlite WASM SQL console & CSV exporter
+│   │   │   ├── SimulationModal.tsx # Telemetry attack scenario injector
+│   │   │   ├── ThreatChart.tsx     # Threat distribution charts (Recharts)
+│   │   │   └── ThemeToggle.tsx     # Dark/light theme toggle
 │   │   ├── lib/
-│   │   │   ├── pglite.ts           # PGlite WASM client DB & DDL schema
-│   │   │   └── websocket.ts        # Real-time WebSocket listener hook
+│   │   │   ├── pglite.ts           # PGlite client DB, schema & queries
+│   │   │   ├── hypothesis.ts       # Root Cause Analysis generator
+│   │   │   ├── mitre.ts            # MITRE correlation & grouping engine
+│   │   │   ├── report.ts           # Executive report compiler
+│   │   │   ├── theme.tsx           # Theme context & persistence
+│   │   │   └── websocket.ts        # WebSocket listener with backoff & jitter
 │   │   └── types/
-│   │       └── alert.ts            # TypeScript definitions
+│   │       └── alert.ts            # Complete TypeScript domain definitions
 │   ├── Dockerfile
 │   ├── package.json
 │   └── tailwind.config.js
@@ -128,6 +165,7 @@ SIEM/
 │   └── docker-compose.yml          # Containerized local runner
 ├── architecture.md
 ├── techstack.md
+├── WORKAROUND.md                   # Operational & Troubleshooting Guide
 └── README.md
 ```
 
@@ -142,7 +180,6 @@ SIEM/
 ### Step 1: Run Backend Engine
 ```bash
 cd backend
-# Run server (default port: 8080)
 go run cmd/server/main.go
 # Or execute pre-compiled binary:
 ./server.exe
@@ -151,6 +188,7 @@ go run cmd/server/main.go
 ### Step 2: Run Next.js Frontend Console
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 Open **[http://localhost:3000](http://localhost:3000)** in your browser.
@@ -187,7 +225,7 @@ Response:
 }
 ```
 
-The Go engine enriches the IOCs in parallel, computes the threat score, pushes the event via WebSockets to the Next.js frontend, and stores it in your browser's local **PGlite PostgreSQL database**.
+The Go engine enriches the IOCs in parallel, computes the threat score, broadcasts the event via WebSockets to the Next.js frontend, and stores it in your browser's local **PGlite PostgreSQL database**.
 
 ---
 
@@ -196,5 +234,5 @@ The Go engine enriches the IOCs in parallel, computes the threat score, pushes t
 To launch the full stack with Docker Compose:
 ```bash
 cd deployments
-docker-compose up --build
+docker compose up --build
 ```
